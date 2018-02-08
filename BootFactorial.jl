@@ -2,29 +2,35 @@ using Distributions
 using DataFrames
 
 """
-    generateBootMatrix(data, factorLevels, numBootSamples)
+    generateBootMatrix(y, [X, numBootSamples])
 
 This function takes two vector inputs - first, the data to bootstrap from and
-second, a vector of factor identifiers whic represent the factor level combinations
+second, a vector of factor identifiers which represent the factor level combinations
 that generated the data.
 
 The output is a bootstrapped matrix with first column filled with the original
-data and the subsequent columns filled with stratified samples of the data
+data and the subsequent columns filled with stratified samples of the data.
+
+The function is set up in this way for minimal dependence on other packages like
+DataFrames that are still in a very primitive stage of development. It is easy
+to get to the required inputs of this function from a DataFrame-ish sort of an
+object by extracting the vector of outcome variable (y) and a vector of factor
+level combination identifiers (X).
 """
-function generateBootMatrix(data::Vector{T},
-                            factorIdentifier::Vector{T},
+function generateBootMatrix(y::Vector{T},
+                            X::Vector{T},
                             numBootSamples::Int) where T <: Real
 
     # Allocate the matrix for bootstrapped data
-    bootMatrix = Matrix{Float64}(length(data), numBootSamples + 1)
+    bootMatrix = Matrix{Float64}(length(y), numBootSamples + 1)
 
     # Fill the first column with the sample
-    bootMatrix[:, 1] = data
+    bootMatrix[:, 1] = y
 
     for s in 2:(numBootSamples+1)
-        for label in unique(factorIdentifier)
-            subsetIndices = find(x -> (x == label), factorIdentifier)
-            dataSubset = data[subsetIndices]
+        for label in unique(X)
+            subsetIndices = find(x -> (x == label), X)
+            dataSubset = y[subsetIndices]
             bootMatrix[subsetIndices, s] = sample(dataSubset, length(dataSubset), replace = true)
         end
     end
