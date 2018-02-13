@@ -12,6 +12,7 @@
 
 library(igraph)
 library(boot)
+library(tidyverse)
 
 set.seed(20130810)
 
@@ -33,7 +34,7 @@ sampleData <- degree(sample_pa(n = 1e5, m = 3, directed = FALSE))
 samplePLFit <- fit_power_law(sampleData)
 cat("The power law coefficient of the fit is : ", samplePLFit$alpha)
 
-nreps <- 200 # Number of bootstrap samples
+nreps <- 500 # Number of bootstrap samples
 
 #' using the bootstrap function from the boot package offers the advantage of 
 #' parallel processing to make the process much faster
@@ -44,3 +45,7 @@ samplePLBoot <- boot(data = sampleData,
                      R = nreps, 
                      parallel = "multicore",
                      ncpus = 3)
+
+qplot(samplePLBoot$t[, 1], geom = "histogram", 
+      xlab = expression(alpha),
+      main = "Distribution of the powerlaw exponent bootstrap estimates")
