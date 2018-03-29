@@ -16,7 +16,7 @@ using namespace Rcpp;
 */
 
 
-double alphaPLFit(arma::vec x) {
+double alphaPLFit(const arma::vec& x) {
   Environment igraph("package:igraph");
   Function fit_power_law = igraph["fit_power_law"];
   
@@ -26,7 +26,7 @@ double alphaPLFit(arma::vec x) {
 }
 
 
-double xMinPLFit(arma::vec x) {
+double xMinPLFit(const arma::vec& x) {
   Environment igraph("package:igraph");
   Function fit_power_law = igraph["fit_power_law"];
   
@@ -36,7 +36,7 @@ double xMinPLFit(arma::vec x) {
 }
 
 // [[Rcpp::export]]
-arma::mat bootstraps(arma::vec x, int times) {
+arma::mat bootstraps(const arma::vec& x, int times) {
   arma::mat bootMatrix;
   
   for (int t = 0; t < times; ++t) {
@@ -48,7 +48,7 @@ arma::mat bootstraps(arma::vec x, int times) {
 }
 
 // [[Rcpp::export]]
-arma::vec bootAlphaPLFit(arma::vec x, int times) {
+arma::vec bootAlphaPLFit(const arma::vec& x, int times) {
   arma::mat bootMatrix = bootstraps(x, times);
   arma::vec alphas(times);
   
@@ -59,3 +59,20 @@ arma::vec bootAlphaPLFit(arma::vec x, int times) {
   
   return alphas;
 }
+
+// [[Rcpp::export]]
+arma::vec bootxMinPLFit(const arma::vec& x, int times) {
+  arma::mat bootMatrix = bootstraps(x, times);
+  arma::vec xMins(times);
+  
+  for (int i = 0; i < times; ++i) {
+    double xMin = xMinPLFit(bootMatrix.col(i));
+    xMins[i] = xMin;
+  }
+  
+  return xMins;
+}
+
+/***R
+
+*/
