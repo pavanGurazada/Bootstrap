@@ -241,19 +241,89 @@ means <- function(data, indices) {
   return(mean(data[indices, "hours"]))
 }
 
-#' non-parametric bootstrap
-b <- boot(aircondit, statistic = means, R = 99, parallel = "snow")
+sds <- function(data, indices) {
+  return(sd(data[indices, "hours"]))
+}
 
-boot_nonparam <- as.data.frame(b$t)
-colnames(boot_nonparam) <- c("mean_time_nonparam")
+#' non-parametric bootstrap, R = 99
+b_means <- boot(aircondit, statistic = means, R = 99, parallel = "snow")
+b_sds <- boot(aircondit, statistic = sds, R = 99, parallel = "snow")
 
-#' parametric bootstrap
-boot_param <- as.data.frame(mean_boot_99)
-colnames(boot_param) <- c("mean_time_param")
+boot_mean_nonparam <- as.data.frame(b_means$t)
+colnames(boot_mean_nonparam) <- c("mean_time_nonparam")
 
-boot_data <- bind_cols(boot_nonparam, boot_param)
+boot_sd_nonparam <- as.data.frame(b_sds$t)
+colnames(boot_sd_nonparam) <- c("sd_time_nonparam")
 
-ggplot(boot_data %>% gather(sampling_mode, mean_time)) +
-  geom_point(aes(x = ))
+boot_nonparam <- bind_cols(boot_mean_nonparam, boot_sd_nonparam)
+
+#' parametric bootstrap, R = 99
+boot_mean_param <- as.data.frame(mean_boot_99)
+colnames(boot_mean_param) <- c("mean_time_param")
+
+boot_sd_param <- boot_df(aircondit, mu, 99) %>% 
+                  summarize_all(sd) %>% 
+                  as_vector() %>% 
+                  as.data.frame() 
+
+colnames(boot_sd_param) <- c("sd_time_param")
+
+boot_param <- bind_cols(boot_mean_param, boot_sd_param)
+
+#' Figure 2.9
+
+dev.new()
+ggplot(boot_param) +
+  geom_point(aes(x = mean_time_param, y = sd_time_param)) +
+  labs(x = "Bootstrap Average",
+       y = "Bootstrap SD",
+       title = "Variation across the bootstrap samples (parametric, R = 99)")
+
+ggplot(boot_nonparam) +
+  geom_point(aes(x = mean_time_nonparam, y = sd_time_nonparam)) +
+  labs(x = "Bootstrap Average",
+       y = "Bootstrap SD",
+       title = "Variation across the bootstrap samples (non-parametric, R = 99)")
+
+
+#' non-parametric bootstrap, R = 999
+b_means <- boot(aircondit, statistic = means, R = 999, parallel = "snow")
+b_sds <- boot(aircondit, statistic = sds, R = 999, parallel = "snow")
+
+boot_mean_nonparam <- as.data.frame(b_means$t)
+colnames(boot_mean_nonparam) <- c("mean_time_nonparam")
+
+boot_sd_nonparam <- as.data.frame(b_sds$t)
+colnames(boot_sd_nonparam) <- c("sd_time_nonparam")
+
+boot_nonparam <- bind_cols(boot_mean_nonparam, boot_sd_nonparam)
+
+#' parametric bootstrap, R = 999
+boot_mean_param <- as.data.frame(mean_boot_999)
+colnames(boot_mean_param) <- c("mean_time_param")
+
+boot_sd_param <- boot_df(aircondit, mu, 999) %>% 
+                  summarize_all(sd) %>% 
+                  as_vector() %>% 
+                  as.data.frame() 
+
+colnames(boot_sd_param) <- c("sd_time_param")
+
+boot_param <- bind_cols(boot_mean_param, boot_sd_param)
+
+#' Figure 2.9
+
+dev.new()
+ggplot(boot_param) +
+  geom_point(aes(x = mean_time_param, y = sd_time_param)) +
+  labs(x = "Bootstrap Average",
+       y = "Bootstrap SD",
+       title = "Variation across the bootstrap samples (parametric, R = 999)")
+
+ggplot(boot_nonparam) +
+  geom_point(aes(x = mean_time_nonparam, y = sd_time_nonparam)) +
+  labs(x = "Bootstrap Average",
+       y = "Bootstrap SD",
+       title = "Variation across the bootstrap samples (non-parametric, R = 999)")
 
 
