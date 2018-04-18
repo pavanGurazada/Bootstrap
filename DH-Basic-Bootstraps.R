@@ -10,19 +10,20 @@ library(boot)
 library(tidyverse)
 library(ggthemes)
 
+library(parallel)
+library(doParallel)
+registerDoParallel(cores=detectCores(all.tests=TRUE))
+
 set.seed(20130810)
 
 theme_set(theme_few())
 
-#' Here, we are ocncerned about bootstrap estimates from a single, homonegenous
+#' Here, we are concerned about bootstrap estimates from a single, homonegenous
 #' set of data
 #'
 #' The first data set is a set of measurement of times between failures of AC
 #' equipment in Boeing 720 aircraft. Possible data generating mechanisms that
 #' are proposed are Exponential and Gamma.
-#'
-#' This data can be analyzed via bootstrap methods: parameteric and
-#' non-parametric
 
 data("aircondit")
 glimpse(aircondit)
@@ -30,6 +31,11 @@ glimpse(aircondit)
 mu <- mean(aircondit$hours)
 variance <- var(aircondit$hours)
 
+#' This data can be analyzed via bootstrap methods: parameteric and
+#' non-parametric.
+#' 
+#' *Parametric bootstrap analysis*
+#' 
 #' We can start by assuming that these data have been drawn at random from a
 #' exponential distribution of the above calculated mean (mu). The parametric
 #' assumption is the distribution i.e., exponential.
@@ -150,4 +156,104 @@ ggplot(variance_boot_expo %>% gather(replicate, bias, -R)) +
 
 #' In the above plot, as expected the variance converges to the variance of an
 #' exponential distribution and the bias converges to 0.
+#'
+#' A sense of the variation in the bootstrap process can be obtained from
+#' histograms of the statistic computed on the bootstrap samples
+
+mean_boot_99 <- boot_df(aircondit, mu, 99) %>% 
+                  summarize_all(mean) %>% 
+                  as_vector()
+
+mean_boot_999 <- boot_df(aircondit, mu, 999) %>% 
+                  summarize_all(mean) %>% 
+                  as_vector()
+
+#' Figure 2.3
+dev.new()
+ggplot(data.frame(t = mean_boot_99)) +
+  geom_histogram(aes(x = t), fill = "black", color = "white") +
+  labs(x = "Mean of bootstrap sample",
+       y = "Count",
+       title = "Distribution of bootstrap sample means (R = 99)")
+
+ggplot(data.frame(t = mean_boot_999)) +
+  geom_histogram(aes(x = t), fill = "black", color = "white") +
+  labs(x = "Mean of bootstrap sample",
+       y = "Count",
+       title = "Distribution of bootstrap sample means (R = 999)")
+
+#' *Non-parametric boootstrap analysis*
+#' 
+#' Non-parametric bootstrap works well when we do not have a theoretical reason
+#' to expect a well-known distribution as a representative of the data
+#' generating process. This often happens when we are interested in an outcome
+#' that is a composition of other columns in the data
+
+data("city")
+glimpse(city)
+
+data("bigcity")
+glimpse(bigcity)
+
+#' This data set containts the populations in 1920 and 1930 for a selection of
+#' cities, the smaller data set is the one that is discussed in chapter 2. We
+#' are interested in the ratio of the mean populations in the two years, i.e.,
+#' (E[X]/E[U]).
+#'
+#' There is no parametric model, we could use to model this data, so we use the
+#' ratio of the sample averages and build an empirical distribution using
+#' bootstrap methods.
+#'
+#' The cool thing is that even though we do not have a 'name' for the
+#' distribution followed by the ratio, we can use resampling to generate
+#' approximate values.
+#'
+#' We begin as usual with a boot function that takes the data and resamples it.
+#' Here we have a pair of values to be sampled so indices are used (it is most
+#' convenient to use the `boot` function!)
+#' 
+
+mean_ratio <- function(data, indices) {
+  return(mean(data[indices, ]$x)/mean(data[indices, ]$u))
+}
+
+b <- boot(city, mean_ratio, R = 999, parallel = "snow")
+
+boot_data <- as.data.frame(b$t)
+colnames(boot_data) <- c("mean_ratio")
+
+#' Figure 2.5
+dev.new()
+ggplot(boot_data) +
+  geom_histogram(aes(x = mean_ratio), fill = "black", color = "white") +
+  labs(x = expression(bar(X)/bar(U)),
+       y = "Count",
+       title = "Bootstrap distribution of the mean ratio")
+
+#' The skew is rather apparent from Figure 2.5
+#'
+#' This brings us naturally to a comparison between parametric and
+#' non-parametric methods. We can make a scatter plot of the mean and standard
+#' deviation of the bootstrapped samples to see the effect of using both these
+#' methods
+
+means <- function(data, indices) {
+  return(mean(data[indices, "hours"]))
+}
+
+#' non-parametric bootstrap
+b <- boot(aircondit, statistic = means, R = 99, parallel = "snow")
+
+boot_nonparam <- as.data.frame(b$t)
+colnames(boot_nonparam) <- c("mean_time_nonparam")
+
+#' parametric bootstrap
+boot_param <- as.data.frame(mean_boot_99)
+colnames(boot_param) <- c("mean_time_param")
+
+boot_data <- bind_cols(boot_nonparam, boot_param)
+
+ggplot(boot_data %>% gather(sampling_mode, mean_time)) +
+  geom_point(aes(x = ))
+
 
