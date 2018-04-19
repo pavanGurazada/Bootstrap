@@ -312,7 +312,6 @@ colnames(boot_sd_param) <- c("sd_time_param")
 boot_param <- bind_cols(boot_mean_param, boot_sd_param)
 
 #' Figure 2.9
-
 dev.new()
 ggplot(boot_param) +
   geom_point(aes(x = mean_time_param, y = sd_time_param)) +
@@ -327,3 +326,48 @@ ggplot(boot_nonparam) +
        title = "Variation across the bootstrap samples (non-parametric, R = 999)")
 
 
+#' How does the bootstrap perform with 'jumpy' statistics like median?
+#' 
+#' Technically, we do not need the function below, but for consistency with more
+#' complicated bootstraps we do the following:
+
+median_fn <- function(data, indices) {
+  return(median(data[indices, "hours"]))
+}
+
+b <- boot(data = aircondit, 
+          statistic = median_fn, 
+          R = 9999,
+          parallel = "snow")
+
+median_boot <- as.data.frame(b$t)
+colnames(median_boot) <- c("sample_median")
+
+dev.new()
+ggplot(median_boot) +
+  geom_histogram(aes(x = sample_median), fill = "black", color = "white") +
+  geom_vline(aes(xintercept = b$t0), size = 1, linetype = "dotted") +
+  labs(x = "Bootstrap sample median",
+       y = "Count",
+       title = "Distribution of the bootstrap samples median")
+
+#' As we can see from the above plot, the median estimates jump around a lot. 
+#' The distribution does not really fit into a 'named' distribution
+#' 
+#' Another interesting statistic of interest would be the correlation between
+#' variables. We apply the reampling to the cities data
+
+corr_fn <- function(data, indices) {
+  return(cor(data[indices, "u"], data[indices, "x"]))
+}
+
+b <- boot(data = city, 
+          statistic = corr_fn, 
+          R = 9999,
+          parallel = "snow")
+
+corr_boot <- as.data.frame(b$t)
+colnames(corr_boot) <- c("correlation")
+
+ggplot(corr_boot) +
+  geom_histogram(aes(x = correlation), fill = "black", color = "white")
