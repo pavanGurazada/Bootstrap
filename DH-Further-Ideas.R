@@ -3,7 +3,7 @@
 #' author: Davison and Hinkley
 #' output: github_document
 #' ---
-#' last update: Thu Apr 19 11:07:11 2018
+#' last update: Fri Apr 20 06:33:55 2018s
 #' 
 
 library(boot)
@@ -99,4 +99,3 @@ st <- function(data) {
 
 b <- censboot(aml, st, R = 499, strata = aml$group)
 
-#' *Missing Data*
