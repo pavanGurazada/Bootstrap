@@ -8,11 +8,14 @@
 
 library(boot)
 library(tidyverse)
+library(ggthemes)
 library(ggfortify)
 
 library(survival)
 
 set.seed(20130810)
+theme_set(theme_few() + 
+            theme(plot.title = element_text(face="bold")))
 
 data("gravity")
 glimpse(gravity)
@@ -47,6 +50,7 @@ mean_weightd <- function(data, indices) {
 b <- boot(data = gravity,
           statistic = mean_weightd,
           R = 1000,
+          strata = gravity$series,
           parallel = "snow")
 
 mean_boot <- as.data.frame(b$t)
