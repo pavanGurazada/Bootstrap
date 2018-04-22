@@ -4,7 +4,7 @@
 #' output: github_document
 #' ---
 
-#' last update: Fri Apr 20 17:12:15 2018
+#' last update: Sun Apr 22 09:54:40 2018
 
 library(boot)
 library(tidyverse)
@@ -108,7 +108,7 @@ corr_boot <- data.frame(correlation = corr_boot)
 #' Figure 4.7
 ggplot(corr_boot) +
   geom_histogram(aes(x = correlation), fill = "black", alpha = 0.5) +
-  geom_vline(aes(xintercept = sample_corr), linetype = "dashed") +
+  geom_vline(aes(xintercept = sample_corr), linetype = "dashed", size = 1) +
   labs(x = "Correlation",
        y = "Count",
        title = "Histogram of correlation from permutations")
@@ -140,6 +140,31 @@ gravity %>%
 #' two subgroups and return the difference in means as the test statistic. We
 #' then check how likely is the difference to be what we observe in the sample
 #' under the bootstrap distribution
+#'
+#' We begin with the data subset, resample a total of 26 rows from the data with
+#' replacement and check the distribution of the diffeernce in means
+
+gravity_df <- filter(gravity, series == 7 | series == 8)
+
+out_vec <- numeric(1000) # To hold the bootstrapped mean differences 
+
+for (r in 1:1000) {
+  gravity_df %>% 
+    slice(sample(x = 1:nrow(gravity_df), size = nrow(gravity_df), replace = TRUE)) %>% 
+    group_by(series) %>% 
+    summarize_at(vars(g), function(col) mean(col)) %>% 
+    summarize_at(vars(g), function(col) col[2] - col[1]) %>% 
+    as.numeric() -> 
+    out_vec[r]
+}
+
+qplot(out_vec, geom = "histogram") +
+  geom_vline(aes(xintercept = mean(sample8) - mean(sample7)), 
+             linetype = "dashed", 
+             size = 1) +
+  labs(x = "Difference in means",
+       y = "Count",
+       title = "Distribution of difference in means from the bootstrap sample")
 
 meandiff_boot <- function(s1, s2, R = 1000) {
   
@@ -159,7 +184,6 @@ b <- meandiff_boot(sample7, sample8)
 
 #' Figure 4.9
 dev.new()
-
 qplot(b, geom = "histogram") +
   geom_vline(aes(xintercept = mean(sample8) - mean(sample7)), 
              linetype = "dashed", 
