@@ -4,7 +4,7 @@
 #' output: github_document
 #' ---
 
-#' last update: Sun Apr 22 09:54:40 2018
+#' last update: Mon Apr 23 05:23:39 2018
 
 library(boot)
 library(tidyverse)
@@ -192,3 +192,64 @@ qplot(b, geom = "histogram") +
        y = "Count",
        title = "Distribution of difference in means from the bootstrap sample")
 
+#' Now let us look at the null hypothesis that there is no difference between
+#' the means from the eight series of measurements. We summarize the data in the
+#' table below.
+
+gravity %>% 
+  group_by(series) %>% 
+  summarize(n = n(),
+            mean_y = mean(g),
+            var_y = var(g),
+            w_y = n/var_y) ->
+  gravity_stats 
+
+gravity_stats %>% 
+  summarize(mu0 = sum(w_y * mean_y)/sum(w_y)) %>% 
+  as.numeric() ->
+  mu0
+
+#' Table 4.3
+gravity_stats %>% 
+  mutate(sigma_y2 = (n-1)/n * var_y + (mean_y - mu0)^2,
+         resid_denom = sqrt(sigma_y2 - 1/sum(w_y))) %>% 
+  select(series, n, mean_y, var_y, sigma_y2, w_y, resid_denom) ->
+  gravity_stats
+
+#' We bootstrap from the model: y_ij = mu0 + sigma_y * e_ij
+#' 
+#' Here we sample with replacement from the residuals
+
+bm <- data.frame(series = c(rep(1, gravity_stats$n[1]), rep(2, gravity_stats$n[2]),
+                            rep(3, gravity_stats$n[3]), rep(4, gravity_stats$n[4]),
+                            rep(5, gravity_stats$n[5]), rep(6, gravity_stats$n[6]),
+                            rep(7, gravity_stats$n[7]), rep(8, gravity_stats$n[8])),
+                 y_ij = gravity$g,
+                 mu0 = rep(mu0, sum(gravity_stats$n)),
+                 sigmai0 = c(rep(sqrt(gravity_stats$sigma_y2[1]), gravity_stats$n[1]), 
+                             rep(sqrt(gravity_stats$sigma_y2[2]), gravity_stats$n[2]),
+                             rep(sqrt(gravity_stats$sigma_y2[3]), gravity_stats$n[3]),
+                             rep(sqrt(gravity_stats$sigma_y2[4]), gravity_stats$n[4]),
+                             rep(sqrt(gravity_stats$sigma_y2[5]), gravity_stats$n[5]),
+                             rep(sqrt(gravity_stats$sigma_y2[6]), gravity_stats$n[6]),
+                             rep(sqrt(gravity_stats$sigma_y2[7]), gravity_stats$n[7]),
+                             rep(sqrt(gravity_stats$sigma_y2[8]), gravity_stats$n[8])),
+                 resid_denom = c(rep(gravity_stats$resid_denom[1], gravity_stats$n[1]), 
+                                 rep(gravity_stats$resid_denom[2], gravity_stats$n[2]),
+                                 rep(gravity_stats$resid_denom[3], gravity_stats$n[3]),
+                                 rep(gravity_stats$resid_denom[4], gravity_stats$n[4]),
+                                 rep(gravity_stats$resid_denom[5], gravity_stats$n[5]),
+                                 rep(gravity_stats$resid_denom[6], gravity_stats$n[6]),
+                                 rep(gravity_stats$resid_denom[7], gravity_stats$n[7]),
+                                 rep(gravity_stats$resid_denom[8], gravity_stats$n[8])))
+
+bm <- mutate(bm, e_ij = (y_ij - mu0)/resid_denom)
+
+boot_samples <- matrix(nrow = nrow(bm), ncol = 1000 + 3)
+boot_samples[, 1] <- bm$series
+boot_samples[, 2] <- bm$mu0
+boot_samples[, 3] <- bm$sigmai0
+
+for (r in 1:1000) {
+  boot_samples[, r + 3] <- 
+}
