@@ -4,7 +4,7 @@
 #' output: github_document
 #' ---
 
-#' last update: Mon Apr 23 05:23:39 2018
+#' last update: Tue Apr 24 05:44:42 2018
 
 library(boot)
 library(tidyverse)
@@ -118,6 +118,8 @@ ggplot(corr_boot) +
 #' probabilty of observing the sample correlation is very less, leading us to
 #' the conclusion that our assumption is incorrect.
 #' 
+#' *Non-parametric bootstrap*
+#' 
 #' Now, we return to the case of the non-parametric bootstrap. For the gravity 
 #' data we are investigating the null hypothesis that there is no difference in the 
 #' measurements from the different groups of measurements of `g`
@@ -158,6 +160,7 @@ for (r in 1:1000) {
     out_vec[r]
 }
 
+dev.new()
 qplot(out_vec, geom = "histogram") +
   geom_vline(aes(xintercept = mean(sample8) - mean(sample7)), 
              linetype = "dashed", 
@@ -245,11 +248,39 @@ bm <- data.frame(series = c(rep(1, gravity_stats$n[1]), rep(2, gravity_stats$n[2
 
 bm <- mutate(bm, e_ij = (y_ij - mu0)/resid_denom)
 
-boot_samples <- matrix(nrow = nrow(bm), ncol = 1000 + 3)
-boot_samples[, 1] <- bm$series
-boot_samples[, 2] <- bm$mu0
-boot_samples[, 3] <- bm$sigmai0
-
-for (r in 1:1000) {
-  boot_samples[, r + 3] <- 
+R <- 999
+for (r in 1:R) {
+  b <- paste0("b", r)
+  bm[[b]] <- bm$y_ij + bm$sigmai0 + sample(x = bm$e_ij, size = length(bm$e_ij), replace = TRUE)
 }
+
+#' The test statistic is a weighted squared residual. The weight for each sample 
+#' is the same as calculated earlier 
+
+boot_df <- select(bm, series, b1:b999)
+
+compute_t <- function(col, boot_df) {
+  df <- data.frame(series = boot_df[["series"]], col)
+  
+  df %>% group_by(series) %>% summarize_all(mean) %>% pull(2) -> y_i
+  df %>% group_by(series) %>% summarize_all(var) %>% pull(2) -> s_i
+  df %>% group_by(series) %>% tally() %>% pull(n) -> n_i
+  
+  w_i <- n_i/s_i
+  mu0 <- sum(w_i * y_i)/sum(w_i)
+  
+  return(sum(w_i * (y_i - mu0)^2))
+}
+
+boot_t <- boot_df %>% map_at(. , 2:1000, compute_t, .)
+boot_t[1] <- NULL # delete the first element, which holds the series
+boot_t %>%  
+  flatten_df() %>% 
+  gather(boot_sample, t) ->
+  boot_t
+
+dev.new()
+ggplot(boot_t) +
+  geom_histogram(aes(x = t))
+
+
